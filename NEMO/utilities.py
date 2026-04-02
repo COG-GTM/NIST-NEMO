@@ -632,8 +632,9 @@ def send_mail(
     except TypeError:
         raise TypeError("to, cc and bcc arguments must be a list, set or tuple")
     user_reply_to = getattr(settings, "EMAIL_USE_DEFAULT_AND_REPLY_TO", False)
-    if reply_to is None and user_reply_to:
-        reply_to = [from_email]
+    if user_reply_to:
+        if reply_to is None:
+            reply_to = [from_email]
         from_email = None
     email_prefix = getattr(settings, "NEMO_EMAIL_SUBJECT_PREFIX", None)
     if email_prefix and not subject.startswith(email_prefix):

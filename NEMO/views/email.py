@@ -284,13 +284,13 @@ def send_broadcast_email(request):
     try:
         users_set = set(users)
         chunk_size = quiet_int(getattr(settings, "EMAIL_BROADCAST_BCC_CHUNK_SIZE", len(users_set)), len(users_set))
-        for users_chunk in split_into_chunks(users_set, chunk_size):
+        for i, users_chunk in enumerate(split_into_chunks(users_set, chunk_size)):
             send_mail(
                 subject=subject,
                 content=content,
                 from_email=sender.email,
                 bcc=users_chunk,
-                cc=cc_list,
+                cc=cc_list if i == 0 else None,
                 attachments=attachments,
                 email_category=EmailCategory.BROADCAST_EMAIL,
                 fail_silently=False,
