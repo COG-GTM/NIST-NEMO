@@ -100,8 +100,8 @@
             {% include 'base/footer.html' %}
         {% endblock %}
         {# This division is used to display dialog messages via Bootstrap. #}
-        <div class="modal fade" id="dialog" tabindex="-1" role="dialog" aria-label="Dialog">
-            <div class="modal-dialog" aria-modal="true">
+        <div class="modal fade" id="dialog" tabindex="-1" role="dialog" aria-modal="true" aria-label="Dialog">
+            <div class="modal-dialog">
                 <div class="modal-content"></div>
             </div>
         </div>
@@ -162,7 +162,7 @@
         });
         {# Set described by on when showing modal #}
         $("#dialog").on("shown.bs.modal", function () {
-            $("#dialog .modal-dialog").attr("aria-labelledby", "modal-description-label");
+            $("#dialog").attr("aria-labelledby", "modal-description-label");
         });
     }, false);
 
