@@ -3,6 +3,42 @@ a
 	color: #1067b4;
 }
 
+/* Accessibility: Visible focus indicators for keyboard navigation (WCAG 2.4.7) */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+.btn:focus,
+.form-control:focus
+{
+	outline: 2px solid #1067b4;
+	outline-offset: 2px;
+}
+
+.navbar-toggle:focus,
+.dropdown-toggle:focus
+{
+	outline: 2px solid #1067b4;
+	outline-offset: 2px;
+}
+
+/* Ensure skip link is visible on focus */
+.sr-only-focusable:focus
+{
+	position: fixed;
+	top: 10px;
+	left: 10px;
+	z-index: 100000;
+	padding: 10px 15px;
+	background-color: #fff;
+	border: 2px solid #1067b4;
+	border-radius: 4px;
+	color: #1067b4;
+	font-weight: bold;
+	text-decoration: none;
+}
+
 label
 {
 	font-weight: normal !important;

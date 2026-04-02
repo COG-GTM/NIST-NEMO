@@ -31,7 +31,7 @@
         <link rel="stylesheet" type="text/css" href="{% static "bootstrap/css/bootstrap-theme.css" %}" />
     </head>
     <body>
-        <div class="container">
+        <main class="container" role="main">
             <div class="col-md-8 col-md-offset-2" style="text-align:center; margin-bottom:30px">
                 <h1>Welcome to the {{ site_title }} website</h1>
             </div>
@@ -79,8 +79,8 @@
                 </div>
             {% endif %}
             {% if login_banner %}<div class="alert alert-info">{{ login_banner|safe }}</div>{% endif %}
-            {% include 'base/footer.html' %}
-        </div>
+            {% include 'base/footer.html' %>
+        </main>
         <script>
 		if(!navigator.cookieEnabled)
 		{

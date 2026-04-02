@@ -8,7 +8,9 @@
                     class="navbar-toggle navbar-btn"
                     data-toggle="collapse"
                     data-target="#site-navigation"
-                    aria-label="menu button">
+                    aria-label="Toggle navigation"
+                    aria-expanded="false"
+                    aria-controls="site-navigation">
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
@@ -59,7 +61,7 @@
                 {% endblock %}
                 {% if user.is_any_part_of_staff or user.is_tool_superuser or user.is_tool_staff or user.is_project_pi or user.get_all_permissions and "django.contrib.admin"|app_installed %}
                     <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Administration<b class="caret"></b></a>
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Administration<b class="caret"></b></a>
                         <ul id="admin-nav" class="dropdown-menu">
                             {% block navbar_admin %}
                                 {# The navigation_url tag will display the item if the URL name can be reversed. #}
@@ -153,7 +155,7 @@
                     </li>
                 {% endif %}
             </ul>
-            <ul class="nav navbar-nav navbar-right hidden-sm hidden-xs">
+            <ul class="nav navbar-nav navbar-right hidden-sm hidden-xs" aria-label="User menu">
                 {% if user.charging_staff_time %}
                     <li>
                         <p class="navbar-text">
