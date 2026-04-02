@@ -274,6 +274,9 @@ def send_broadcast_email(request):
     sender: User = request.user
     if form.cleaned_data["copy_me"]:
         users += sender.get_emails(sender.get_preferences().email_send_broadcast_emails)
+    reply_to = form.cleaned_data.get("reply_to")
+    reply_to_list = [reply_to] if reply_to else None
+    cc_list = form.cleaned_data.get("cc") or None
     attachments = [
         create_email_attachment(attachment.file, attachment.name)
         for attachment in request.FILES.getlist("attachments", [])
@@ -281,15 +284,17 @@ def send_broadcast_email(request):
     try:
         users_set = set(users)
         chunk_size = quiet_int(getattr(settings, "EMAIL_BROADCAST_BCC_CHUNK_SIZE", len(users_set)), len(users_set))
-        for users_chunk in split_into_chunks(users_set, chunk_size):
+        for i, users_chunk in enumerate(split_into_chunks(users_set, chunk_size)):
             send_mail(
                 subject=subject,
                 content=content,
                 from_email=sender.email,
                 bcc=users_chunk,
+                cc=cc_list if i == 0 else None,
                 attachments=attachments,
                 email_category=EmailCategory.BROADCAST_EMAIL,
                 fail_silently=False,
+                reply_to=reply_to_list,
             )
     except SMTPException as error:
         site_title = ApplicationCustomization.get("site_title")

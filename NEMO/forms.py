@@ -5,12 +5,14 @@ from typing import Union
 
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
+from django.core.validators import validate_email
 from django.forms import (
     BaseForm,
     BooleanField,
     CharField,
     ChoiceField,
     DateField,
+    EmailField,
     Form,
     ImageField,
     IntegerField,
@@ -386,6 +388,8 @@ class EmailBroadcastForm(Form):
     greeting = CharField(required=False)
     contents = CharField(required=False)
     copy_me = BooleanField(required=False, initial=True)
+    reply_to = EmailField(required=False)
+    cc = CharField(required=False)
 
     audience = ChoiceField(
         choices=[
@@ -409,6 +413,18 @@ class EmailBroadcastForm(Form):
 
     def clean_selection(self):
         return self.data.getlist("selection")
+
+    def clean_cc(self):
+        cc_field = self.cleaned_data.get("cc", "").strip()
+        if not cc_field:
+            return []
+        cc_list = [addr.strip() for addr in cc_field.replace(";", ",").split(",") if addr.strip()]
+        for addr in cc_list:
+            try:
+                validate_email(addr)
+            except ValidationError:
+                raise ValidationError(f"'{addr}' is not a valid email address.")
+        return cc_list
 
 
 class AlertForm(ModelForm):
