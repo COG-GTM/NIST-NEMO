@@ -651,15 +651,12 @@ def report_problem(request):
 
         return render(request, "kiosk/tool_report_problem.html", dictionary)
 
-    if not settings.ALLOW_CONDITIONAL_URLS and form.cleaned_data["force_shutdown"]:
-        site_title = ApplicationCustomization.get("site_title")
-        dictionary["message"] = format_html(
-            '<ul class="errorlist"><li>{}</li></ul>'.format(
-                f"Tool control is only available on campus. When creating a task, you can't force a tool shutdown while using {site_title} off campus.",
-            )
-        )
-        dictionary["form"] = form
-        return render(request, "kiosk/tool_report_problem.html", dictionary)
+    # When off-campus (ALLOW_CONDITIONAL_URLS=False), prevent force shutdown
+    # but still allow the problem report/task to be saved
+    force_shutdown_suppressed = not settings.ALLOW_CONDITIONAL_URLS and form.cleaned_data["force_shutdown"]
+    if force_shutdown_suppressed:
+        form.cleaned_data["force_shutdown"] = False
+        form.instance.force_shutdown = False
 
     task = form.save()
     task.estimated_resolution_time = estimated_resolution_time
