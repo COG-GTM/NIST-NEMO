@@ -67,15 +67,11 @@ def create(request):
         }
         return render(request, "acknowledgement.html", dictionary)
 
+    # When off-campus (ALLOW_CONDITIONAL_URLS=False), prevent force shutdown
+    # but still allow the problem report/task to be saved
     if not settings.ALLOW_CONDITIONAL_URLS and form.cleaned_data["force_shutdown"]:
-        site_title = ApplicationCustomization.get("site_title")
-
-        dictionary = {
-            "title": "Task creation failed",
-            "heading": "Something went wrong while reporting the problem",
-            "content": f"Tool control is only available on campus. When creating a task, you can't force a tool shutdown while using {site_title} off campus.",
-        }
-        return render(request, "acknowledgement.html", dictionary)
+        form.cleaned_data["force_shutdown"] = False
+        form.instance.force_shutdown = False
 
     task = form.save()
     task_images = save_task_images(request, task)

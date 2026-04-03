@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from NEMO.models import Area, Notification, PhysicalAccessLevel, Tool, User
 from NEMO.utilities import (
     date_input_js_format,
@@ -116,4 +118,5 @@ def base_context(request):
         "safety_page_title": customization_values.get("safety_page_title"),
         "calendar_first_day_of_week": customization_values.get("calendar_first_day_of_week"),
         "allow_profile_view": customization_values.get("user_allow_profile_view", "") == "enabled",
+        "allow_conditional_urls": settings.ALLOW_CONDITIONAL_URLS,
     }

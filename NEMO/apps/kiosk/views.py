@@ -64,6 +64,9 @@ from NEMO.views.tool_control import (
 @permission_required("NEMO.kiosk")
 @require_POST
 def enable_tool(request):
+    if not settings.ALLOW_CONDITIONAL_URLS:
+        dictionary = {"message": "Tool control is only available on campus.", "delay": 10}
+        return render(request, "kiosk/acknowledgement.html", dictionary)
     return do_enable_tool(request, request.POST["tool_id"])
 
 
@@ -135,6 +138,9 @@ def do_enable_tool(request, tool_id):
 @permission_required("NEMO.kiosk")
 @require_POST
 def disable_tool(request):
+    if not settings.ALLOW_CONDITIONAL_URLS:
+        dictionary = {"message": "Tool control is only available on campus.", "delay": 10}
+        return render(request, "kiosk/acknowledgement.html", dictionary)
     return do_disable_tool(request, request.POST["tool_id"])
 
 

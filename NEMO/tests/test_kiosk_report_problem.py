@@ -9,12 +9,12 @@ class KioskReportProblemTestCase(NEMOTestCaseMixin, TestCase):
     tool = None
 
     def setUp(self):
-        owner = User.objects.create(username="owner", first_name="Tool", last_name="Owner")
+        self.owner = User.objects.create(username="owner", first_name="Tool", last_name="Owner")
         self.tool = Tool.objects.create(
             name="test_tool",
             _category="test",
             _location="office",
-            _primary_owner=owner,
+            _primary_owner=self.owner,
             visible=True,
             _operation_mode=Tool.OperationMode.REGULAR,
         )
@@ -128,3 +128,92 @@ class KioskReportProblemTestCase(NEMOTestCaseMixin, TestCase):
         # Should render the form with errors (200), not redirect
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Task.objects.count(), 0)
+
+    @override_settings(ALLOW_CONDITIONAL_URLS=False)
+    def test_kiosk_enable_tool_blocked_off_campus(self):
+        """When off-campus (ALLOW_CONDITIONAL_URLS=False), kiosk enable_tool should be blocked."""
+        self.login_as(self.user)
+        data = {
+            "tool_id": self.tool.id,
+            "customer_id": self.user.id,
+            "project_id": self.project.id,
+        }
+        response = self.client.post(reverse("enable_tool_from_kiosk"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Tool control is only available on campus")
+
+    @override_settings(ALLOW_CONDITIONAL_URLS=False)
+    def test_kiosk_disable_tool_blocked_off_campus(self):
+        """When off-campus (ALLOW_CONDITIONAL_URLS=False), kiosk disable_tool should be blocked."""
+        self.login_as(self.user)
+        data = {
+            "tool_id": self.tool.id,
+            "customer_id": self.user.id,
+        }
+        response = self.client.post(reverse("disable_tool_from_kiosk"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Tool control is only available on campus")
+
+
+class WebTaskCreationTestCase(NEMOTestCaseMixin, TestCase):
+    """Tests for the web interface task creation (NEMO/views/tasks.py) with ALLOW_CONDITIONAL_URLS."""
+
+    def setUp(self):
+        self.owner = User.objects.create(username="owner", first_name="Tool", last_name="Owner", is_staff=True)
+        self.tool = Tool.objects.create(
+            name="test_tool",
+            _category="test",
+            _location="office",
+            _primary_owner=self.owner,
+            visible=True,
+            _operation_mode=Tool.OperationMode.REGULAR,
+        )
+        self.user, self.project = create_user_and_project(is_staff=True)
+        self.user.badge_number = 123456
+        self.user.save()
+
+    def _create_task_data(self, force_shutdown=False):
+        return {
+            "tool": self.tool.id,
+            "urgency": Task.Urgency.NORMAL,
+            "action": "create",
+            "description": "Something is broken",
+            "force_shutdown": force_shutdown,
+            "safety_hazard": False,
+        }
+
+    @override_settings(ALLOW_CONDITIONAL_URLS=False)
+    def test_web_task_creation_force_shutdown_suppressed_off_campus(self):
+        """When off-campus (ALLOW_CONDITIONAL_URLS=False) and force_shutdown is requested,
+        the task should be saved but force_shutdown should be suppressed to False."""
+        self.login_as(self.user)
+        data = self._create_task_data(force_shutdown=True)
+        response = self.client.post(reverse("create_task"), data)
+        # Should redirect (task saved), not render error page
+        self.assertEqual(response.status_code, 302)
+        task = Task.objects.last()
+        self.assertIsNotNone(task)
+        # force_shutdown should be suppressed to False when off-campus
+        self.assertFalse(task.force_shutdown)
+
+    @override_settings(ALLOW_CONDITIONAL_URLS=False)
+    def test_web_task_creation_without_force_shutdown_off_campus(self):
+        """When off-campus without force_shutdown, task should be saved normally."""
+        self.login_as(self.user)
+        data = self._create_task_data(force_shutdown=False)
+        response = self.client.post(reverse("create_task"), data)
+        self.assertEqual(response.status_code, 302)
+        task = Task.objects.last()
+        self.assertIsNotNone(task)
+        self.assertFalse(task.force_shutdown)
+
+    @override_settings(ALLOW_CONDITIONAL_URLS=True)
+    def test_web_task_creation_force_shutdown_allowed_on_campus(self):
+        """When on-campus (ALLOW_CONDITIONAL_URLS=True), force_shutdown should be allowed."""
+        self.login_as(self.user)
+        data = self._create_task_data(force_shutdown=True)
+        response = self.client.post(reverse("create_task"), data)
+        self.assertEqual(response.status_code, 302)
+        task = Task.objects.last()
+        self.assertIsNotNone(task)
+        self.assertTrue(task.force_shutdown)

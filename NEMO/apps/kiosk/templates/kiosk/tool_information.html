@@ -45,7 +45,7 @@
                 </h2>
             {% endwith %}
         </div>
-        {% if tool.in_use %}
+        {% if tool.in_use and allow_conditional_urls %}
             {% if customer|is_staff_on_tool:tool or customer.is_user_office %}
                 <p>
                     You may <a href="javascript:void(0)" onclick="disable_tool();">force {{ tool.get_current_usage_event.operator }} off this tool</a>.
