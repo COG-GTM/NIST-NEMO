@@ -265,6 +265,7 @@ class ToolAdmin(admin.ModelAdmin):
         "_primary_owner",
         "parent_tool",
         "_grant_physical_access_level_upon_qualification",
+        "_hazard_areas",
     ]
     actions = [duplicate_tool_configuration]
     form = ToolAdminForm
@@ -347,6 +348,7 @@ class ToolAdmin(admin.ModelAdmin):
                 "fields": (
                     "_requires_area_access",
                     "_requires_area_occupancy_minimum",
+                    "_hazard_areas",
                     "_grant_physical_access_level_upon_qualification",
                     "_grant_badge_reader_access_upon_qualification",
                     "_interlock",
