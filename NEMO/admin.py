@@ -250,7 +250,13 @@ class ToolAdmin(admin.ModelAdmin):
         "is_configurable",
         "id",
     )
-    filter_horizontal = ("_backup_owners", "_staff", "_superusers", "_adjustment_request_reviewers")
+    filter_horizontal = (
+        "_backup_owners",
+        "_staff",
+        "_superusers",
+        "_adjustment_request_reviewers",
+        "_hazard_footprint",
+    )
     search_fields = ("name", "_description", "_serial")
     list_filter = (
         "visible",
@@ -346,6 +352,7 @@ class ToolAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "_requires_area_access",
+                    "_hazard_footprint",
                     "_requires_area_occupancy_minimum",
                     "_grant_physical_access_level_upon_qualification",
                     "_grant_badge_reader_access_upon_qualification",

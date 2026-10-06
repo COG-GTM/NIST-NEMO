@@ -378,6 +378,8 @@ class DefaultNEMOPolicy(BaseNEMOPolicy):
             cancelled_reservation, new_reservation, user_creating_reservation, policy_problems
         )
 
+        self.check_hazard_footprint_policy(cancelled_reservation, new_reservation, policy_problems)
+
         # Reservations that have been cancelled may not be changed.
         if new_reservation.cancelled:
             policy_problems.append(
@@ -724,6 +726,41 @@ class DefaultNEMOPolicy(BaseNEMOPolicy):
             policy_problems.append(
                 "Your reservation coincides with a scheduled outage. Please choose a different time."
             )
+
+    def check_hazard_footprint_policy(
+        self, cancelled_reservation: Optional[Reservation], new_reservation: Reservation, policy_problems: List
+    ):
+        # A tool may not be reserved while any area in its hazard footprint (or a sub-area) is reserved
+        # by someone else, or while that area is under a scheduled outage.
+        # This is checked before staff/override exemptions, so it cannot be overridden.
+        if new_reservation.reservation_item_type != ReservationItemType.TOOL:
+            return
+        for footprint_area in new_reservation.tool.hazard_footprint.all():
+            area_ids = [area.id for area in footprint_area.get_descendants(include_self=True)]
+            other_reservations = Reservation.objects.filter(
+                cancelled=False,
+                missed=False,
+                shortened=False,
+                area_id__in=area_ids,
+                start__lt=new_reservation.end,
+                end__gt=new_reservation.start,
+            ).exclude(user=new_reservation.user)
+            if cancelled_reservation and cancelled_reservation.id:
+                other_reservations = other_reservations.exclude(id=cancelled_reservation.id)
+            if other_reservations.exists():
+                policy_problems.append(
+                    f"This tool's hazard footprint includes the {footprint_area}, which is reserved by someone else at this time. Please choose a different time."
+                )
+            outage_area_ids = area_ids + [area.id for area in footprint_area.get_ancestors()]
+            outages = ScheduledOutage.objects.filter(
+                Q(area_id__in=outage_area_ids) | Q(resource__dependent_areas__in=outage_area_ids),
+                start__lt=new_reservation.end,
+                end__gt=new_reservation.start,
+            )
+            if outages.exists():
+                policy_problems.append(
+                    f"This tool's hazard footprint includes the {footprint_area}, which has a scheduled outage at this time. Please choose a different time."
+                )
 
     def should_enforce_reservation_policy(self, reservation: Reservation) -> bool:
         """Returns whether the policy rules should be enforced."""
