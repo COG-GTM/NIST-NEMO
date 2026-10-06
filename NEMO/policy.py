@@ -407,6 +407,10 @@ class DefaultNEMOPolicy(BaseNEMOPolicy):
         except ProjectChargeException as e:
             policy_problems.append(e.msg)
 
+        # Tools linked to hazard areas cannot be reserved while those areas are in use or closed.
+        # Neither staff nor an explicit policy override may break this rule.
+        self.check_tool_hazard_area_policy(new_reservation, policy_problems)
+
         # If the reservation user is a staff member or there's an explicit policy override, then the policy check is finished.
         if user.is_staff_on_tool(new_reservation.tool) or explicit_policy_override:
             return policy_problems, overridable
@@ -643,6 +647,31 @@ class DefaultNEMOPolicy(BaseNEMOPolicy):
                         policy_problems.append(
                             f"{str(user)} has a reservation for the {difference[0].tool} at {format_datetime(difference[0].start)} that requires a {area} reservation. Cancel or reschedule the tool reservation first and try again."
                         )
+
+    def check_tool_hazard_area_policy(self, new_reservation: Reservation, policy_problems: List[str]):
+        if new_reservation.reservation_item_type != ReservationItemType.TOOL:
+            return
+        for area in new_reservation.tool.hazard_areas.all():
+            # Strict overlap only, so back-to-back reservations are allowed
+            other_user_reservations = Reservation.objects.filter(
+                cancelled=False,
+                missed=False,
+                shortened=False,
+                area=area,
+                start__lt=new_reservation.end,
+                end__gt=new_reservation.start,
+            ).exclude(user=new_reservation.user)
+            if other_user_reservations.exists():
+                policy_problems.append(
+                    f"The {area} is a hazard area for this tool and is reserved by another user at this time. Please choose a different time."
+                )
+            area_outages = area.scheduled_outage_queryset().filter(
+                start__lt=new_reservation.end, end__gt=new_reservation.start
+            )
+            if area_outages.exists():
+                policy_problems.append(
+                    f"The {area} is a hazard area for this tool and is closed for a scheduled outage at this time. Please choose a different time."
+                )
 
     def check_coincident_item_reservation_policy(
         self,
