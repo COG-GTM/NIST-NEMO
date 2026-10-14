@@ -1378,6 +1378,14 @@ class Tool(SerializationByNameModel):
         help_text="Indicates that this tool is physically located in a billable area and requires an active area access record in order to be operated.",
         on_delete=models.PROTECT,
     )
+    _hazard_footprint = models.ManyToManyField(
+        "Area",
+        db_table="NEMO_tool_hazard_footprint",
+        verbose_name="hazard footprint",
+        blank=True,
+        related_name="hazard_footprint_tools",
+        help_text="Areas that become unsafe while this tool is in use. Tool reservations are blocked when any of these areas (or their sub-areas) is reserved by someone else or has a scheduled outage.",
+    )
     _requires_area_occupancy_minimum = models.PositiveIntegerField(
         db_column="requires_area_occupancy_minimum",
         verbose_name="requires area occupancy minimum",
@@ -1722,6 +1730,10 @@ class Tool(SerializationByNameModel):
     def requires_area_access(self, value):
         self.raise_setter_error_if_child_tool("requires_area_access")
         self._requires_area_access = value
+
+    @property
+    def hazard_footprint(self) -> QuerySetType["Area"]:
+        return self.parent_tool.hazard_footprint if self.is_child_tool() else self._hazard_footprint
 
     @property
     def requires_area_occupancy_minimum(self):
