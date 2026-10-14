@@ -1,10 +1,12 @@
 import calendar
 from datetime import datetime, timedelta
 
-from django.test import TestCase
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from NEMO.actions import duplicate_tool_configuration
 from NEMO.models import Account, Area, Project, Reservation, ScheduledOutage, Tool, User
 from NEMO.tests.test_utilities import NEMOTestCaseMixin
 
@@ -109,5 +111,23 @@ class HazardFootprintTestCase(NEMOTestCaseMixin, TestCase):
         self.staff.projects.add(Project.objects.get(name="project1"))
         self.reserve_area(self.range_area, self.start, self.end)
         response = self.book_tool(user=self.staff)
+        self.assertContains(response, RESERVED_MESSAGE.format(self.range_area), status_code=200)
+        self.assertEqual(self.tool_reservation_count(), 0)
+
+    def test_duplicated_tool_keeps_hazard_footprint(self):
+        admin = User.objects.create(username="admin", first_name="Admin", last_name="User", is_superuser=True)
+        request = RequestFactory().post("/")
+        request.user = admin
+        request.session = {}
+        request._messages = FallbackStorage(request)
+        duplicate_tool_configuration(None, request, Tool.objects.filter(pk=self.tool.pk))
+        copy = Tool.objects.get(name="Copy of launcher")
+        self.assertQuerySetEqual(copy._hazard_footprint.all(), [self.range_area])
+        copy.visible = True
+        copy.operational = True
+        copy.save()
+        self.tool = copy
+        self.reserve_area(self.range_area, self.start, self.end)
+        response = self.book_tool()
         self.assertContains(response, RESERVED_MESSAGE.format(self.range_area), status_code=200)
         self.assertEqual(self.tool_reservation_count(), 0)

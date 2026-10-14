@@ -114,6 +114,7 @@ def duplicate_tool_configuration(model_admin, request, queryset):
                 old_backup_users = tool.backup_owners.all()
                 old_superusers = tool.superusers.all()
                 old_reviewers = tool.adjustment_request_reviewers.all()
+                old_hazard_footprint = tool._hazard_footprint.all()
                 old_qualified_users = User.objects.filter(qualifications__id=tool.pk).distinct()
                 new_tool = new_model_copy(tool)
                 new_tool.interlock = None
@@ -129,6 +130,7 @@ def duplicate_tool_configuration(model_admin, request, queryset):
                 new_tool.backup_owners.set(old_backup_users)
                 new_tool.superusers.set(old_superusers)
                 new_tool.adjustment_request_reviewers.set(old_reviewers)
+                new_tool._hazard_footprint.set(old_hazard_footprint)
                 for user in old_qualified_users:
                     user.qualifications.add(new_tool)
                 messages.success(
