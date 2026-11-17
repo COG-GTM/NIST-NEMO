@@ -814,7 +814,8 @@ def cancel_reservation(request, reservation_id):
     response = cancel_the_reservation(
         reservation=reservation, user_cancelling_reservation=request.user, reason=reason, request=request
     )
-    send_tool_free_time_notification(request, reservation)
+    if response.status_code == HTTPStatus.OK:
+        send_tool_free_time_notification(request, reservation)
     if request.device == "desktop":
         return response
     if request.device == "mobile":
