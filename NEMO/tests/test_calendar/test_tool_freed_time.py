@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from NEMO.models import Account, Area, EmailLog, Project, Reservation, Tool, UsageEvent, User, UserPreferences
-from NEMO.tests.test_utilities import NEMOTestCaseMixin
+from NEMO.tests.test_utilities import NEMOTestCaseMixin, create_user_and_project
 from NEMO.utilities import format_datetime
 from NEMO.views.customization import ToolCustomization
 
@@ -61,6 +61,53 @@ class ReservationTestCase(NEMOTestCaseMixin, TransactionTestCase):
         self.assertEqual(
             EmailLog.objects.filter(to=self.consumer.email, subject__startswith=f"[{self.tool.name}]").first().subject,
             email_subject(self.tool, minutes, start_of_freed_time),
+        )
+
+    def test_cancel_reservation_not_owner_without_reason(self):
+        # a regular user cancelling someone else's reservation is told they don't own it, not to give a reason
+        reservation = Reservation.objects.create(
+            tool=self.tool,
+            start=timezone.now() + timedelta(hours=1),
+            end=timezone.now() + timedelta(hours=4),
+            user=self.staff,
+            creator=self.staff,
+            project=self.project,
+            short_notice=False,
+        )
+        self.login_as(self.consumer)
+        response = self.client.post(reverse("cancel_reservation", args=[reservation.id]), follow=True)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.content.decode(), "You may not cancel reservations that you do not own.")
+        self.assertFalse(Reservation.objects.get(id=reservation.id).cancelled)
+
+    def test_cancel_reservation_from_kiosk(self):
+        # a successful kiosk cancel notifies freed-time subscribers
+        watcher = User.objects.create(username="watcher", first_name="Wat", last_name="Cher", email="w@test.com")
+        prefs: UserPreferences = watcher.get_preferences()
+        prefs.tool_freed_time_notifications.set([self.tool])
+        start = timezone.now() + timedelta(hours=1)
+        end = start + timedelta(hours=3)
+        reservation = Reservation.objects.create(
+            tool=self.tool,
+            start=start,
+            end=end,
+            user=self.consumer,
+            creator=self.consumer,
+            project=self.project,
+            short_notice=False,
+        )
+        kiosk_user, _ = create_user_and_project(add_kiosk_permission=True)
+        self.login_as(kiosk_user)
+        response = self.client.post(
+            reverse("cancel_reservation_from_kiosk", args=[reservation.id]), {"customer_id": self.consumer.id}
+        )
+        self.assertEqual(response.status_code, 200)
+        sleep(0.5)
+        self.assertTrue(Reservation.objects.get(id=reservation.id).cancelled)
+        minutes = reservation.duration().total_seconds() / 60
+        self.assertEqual(
+            EmailLog.objects.filter(to=watcher.email, subject__startswith=f"[{self.tool.name}]").first().subject,
+            email_subject(self.tool, minutes, start),
         )
 
     def test_cancel_reservation_same_user(self):

@@ -586,9 +586,7 @@ class AreaReservationTestCase(NEMOTestCaseMixin, TransactionTestCase):
             reverse("cancel_reservation", kwargs={"reservation_id": reservation.id}), {}, follow=True
         )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            "You must provide a reason when cancelling someone else's reservation.", response.content.decode()
-        )
+        self.assertEqual("You may not cancel reservations that you do not own.", response.content.decode())
 
         response = self.client.post(
             reverse("cancel_reservation", kwargs={"reservation_id": reservation.id}), {"reason": "reason"}, follow=True

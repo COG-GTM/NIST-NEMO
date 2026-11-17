@@ -35,7 +35,12 @@ from NEMO.models import (
 from NEMO.policy import policy_class as policy
 from NEMO.utilities import localize, quiet_int, remove_duplicates
 from NEMO.views.area_access import log_out_user
-from NEMO.views.calendar import cancel_the_reservation, set_reservation_configuration, shorten_reservation
+from NEMO.views.calendar import (
+    cancel_the_reservation,
+    send_tool_free_time_notification,
+    set_reservation_configuration,
+    shorten_reservation,
+)
 from NEMO.views.consumables import (
     consumable_permissions,
     make_withdrawal,
@@ -355,6 +360,7 @@ def cancel_reservation(request, reservation_id):
     response = cancel_the_reservation(reservation=reservation, user_cancelling_reservation=customer, reason=None)
 
     if response.status_code == HTTPStatus.OK:
+        send_tool_free_time_notification(request, reservation)
         return render(request, "kiosk/success.html", {"cancelled_reservation": reservation, "customer": customer})
     else:
         return render(request, "kiosk/error.html", {"message": response.content, "customer": customer})
