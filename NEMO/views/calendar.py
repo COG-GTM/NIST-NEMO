@@ -1036,7 +1036,7 @@ def cancel_the_reservation(
 
     # The following rules apply only for proper cancellation, not for modification
     # Staff must provide a reason when cancelling a reservation they do not own.
-    if reservation.user != user_cancelling_reservation and not reason:
+    if response.status_code == HTTPStatus.OK and reservation.user != user_cancelling_reservation and not reason:
         response = HttpResponseBadRequest("You must provide a reason when cancelling someone else's reservation.")
 
     policy_problems = []
