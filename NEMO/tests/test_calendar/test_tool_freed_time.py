@@ -63,6 +63,54 @@ class ReservationTestCase(NEMOTestCaseMixin, TransactionTestCase):
             email_subject(self.tool, minutes, start_of_freed_time),
         )
 
+    def test_cancel_reservation_rejected_no_reason(self):
+        # staff cancelling someone else's reservation without a reason is rejected, so no time is freed
+        prefs: UserPreferences = self.consumer.get_preferences()
+        prefs.tool_freed_time_notifications.set([self.tool])
+        other_user = User.objects.create(username="other", first_name="Other", last_name="User", email="o@test.com")
+        start = timezone.now() + timedelta(hours=1)
+        end = start + timedelta(hours=3)
+        reservation = Reservation.objects.create(
+            tool=self.tool,
+            start=start,
+            end=end,
+            user=other_user,
+            creator=other_user,
+            project=self.project,
+            short_notice=False,
+        )
+        self.login_as(self.staff)
+        response = self.client.post(reverse("cancel_reservation", args=[reservation.id]), follow=True)
+        self.assertEqual(response.status_code, 400)
+        sleep(0.5)
+        self.assertFalse(Reservation.objects.get(id=reservation.id).cancelled)
+        self.assertFalse(EmailLog.objects.filter(subject__startswith=f"[{self.tool.name}]").exists())
+
+    def test_cancel_reservation_rejected_not_owner(self):
+        # a regular user cannot cancel someone else's reservation, so no time is freed
+        watcher = User.objects.create(username="watcher", first_name="Wat", last_name="Cher", email="w@test.com")
+        prefs: UserPreferences = watcher.get_preferences()
+        prefs.tool_freed_time_notifications.set([self.tool])
+        start = timezone.now() + timedelta(hours=1)
+        end = start + timedelta(hours=3)
+        reservation = Reservation.objects.create(
+            tool=self.tool,
+            start=start,
+            end=end,
+            user=self.staff,
+            creator=self.staff,
+            project=self.project,
+            short_notice=False,
+        )
+        self.login_as(self.consumer)
+        response = self.client.post(
+            reverse("cancel_reservation", args=[reservation.id]), {"reason": "not mine"}, follow=True
+        )
+        self.assertEqual(response.status_code, 400)
+        sleep(0.5)
+        self.assertFalse(Reservation.objects.get(id=reservation.id).cancelled)
+        self.assertFalse(EmailLog.objects.filter(subject__startswith=f"[{self.tool.name}]").exists())
+
     def test_cancel_reservation_same_user(self):
         # user whose reservation it is doesn't get an email
         prefs: UserPreferences = self.consumer.get_preferences()
