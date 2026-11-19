@@ -514,7 +514,7 @@ class RecurringConsumableChargesViewSet(ModelViewSet):
 
 class ReservationViewSet(ModelViewSet):
     filename = "reservations"
-    queryset = Reservation.objects.all()
+    queryset = Reservation.objects.prefetch_related("configurationoption_set")
     serializer_class = ReservationSerializer
     filterset_fields = {
         "id": key_filters,
