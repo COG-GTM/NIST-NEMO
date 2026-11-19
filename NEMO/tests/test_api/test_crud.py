@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import Permission
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from NEMO.models import User
-from NEMO.tests.test_utilities import NEMOTestCaseMixin
+from NEMO.models import ConfigurationOption, Reservation, Tool, User
+from NEMO.tests.test_utilities import NEMOTestCaseMixin, create_user_and_project
 
 request_content_type = "application/json"
 
@@ -109,3 +112,28 @@ class RestCRUDTestCase(NEMOTestCaseMixin, TestCase):
         response = self.client.delete(delete_url, follow=True)
         self.assertEqual(response.status_code, 204)
         self.assertRaises(User.DoesNotExist, User.objects.get, username="jdoe")
+
+    def test_reservation_list_configuration_options_query_count(self):
+        user, project = create_user_and_project()
+        tool = Tool.objects.create(name="test_tool", primary_owner=user, _category="Imaging")
+        start = timezone.now()
+        for i in range(5):
+            reservation = Reservation.objects.create(
+                tool=tool,
+                start=start + timedelta(hours=i),
+                end=start + timedelta(hours=i, minutes=30),
+                user=user,
+                creator=user,
+                project=project,
+                short_notice=False,
+            )
+            ConfigurationOption.objects.create(name=f"option {i}", reservation=reservation, current_setting="A")
+        self.login_as_user_with_permissions(["view_reservation"])
+        response = self.client.get(reverse("reservation-list"))
+        self.assertEqual(response.status_code, 200)
+        with self.assertNumQueries(6):
+            response = self.client.get(reverse("reservation-list"))
+        self.assertEqual(len(response.data), 5)
+        for item in response.data:
+            self.assertEqual(len(item["configuration_options"]), 1)
+            self.assertEqual(item["configuration_options"][0]["current_setting"], "A")
